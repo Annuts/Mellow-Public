@@ -1,0 +1,24 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+local-data/
+downloads/
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Local encrypted stores
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.enc
+*.enc.next

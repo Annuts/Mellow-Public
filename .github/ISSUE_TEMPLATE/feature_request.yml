@@ -1,0 +1,25 @@
+name: 功能建议（Feature Request）
+description: 分享你的使用场景、改进想法或新功能建议
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 你的使用场景
+      description: 这个问题或需求在日常使用中是怎么出现的？
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的小满表现
+      description: 你希望小满如何处理或呈现？
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充说明（可选）
+      description: 其他参考或补充细节

@@ -1,0 +1,44 @@
+name: mellow
+services:
+  center:
+    build:
+      context: ./services/center
+      args:
+        PYTHON_IMAGE: "${MELLOW_PYTHON_IMAGE:-python:3.11-slim-bookworm}"
+        MELLOW_MODEL_MIRROR: "${MELLOW_MODEL_MIRROR:-hf-mirror.com}"
+    image: mellow-center:local
+    user: "${MELLOW_UID:-1000}:${MELLOW_GID:-1000}"
+    command: ["serve", "--host", "0.0.0.0", "--no-discovery", "--vault-key-file", "/run/secrets/vault_key"]
+    ports:
+      - "${MELLOW_BIND:-127.0.0.1}:${MELLOW_PORT:-8765}:8765"
+    volumes:
+      - mellow_data:/var/lib/mellow
+      - "${MELLOW_DOWNLOADS:-./downloads}:/var/lib/mellow-downloads:ro"
+    environment:
+      MELLOW_DOWNLOADS_PUBLIC_LAN: "${MELLOW_DOWNLOADS_PUBLIC_LAN:-1}"
+      FLYAI_API_KEY: "${FLYAI_API_KEY:-}"
+      FORWARDED_ALLOW_IPS: ""
+    secrets:
+      - vault_key
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "-m", "mellow_center.container_health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 4
+volumes:
+  mellow_data:
+    name: "${MELLOW_VOLUME:-mellow_center_data}"
+    external: true
+secrets:
+  vault_key:
+    file: "${MELLOW_KEY_FILE:?Set MELLOW_KEY_FILE to a private file outside this repository}"

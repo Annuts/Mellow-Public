@@ -1,0 +1,52 @@
+name: 问题反馈（Bug Report）
+description: 反馈小满手机端或家庭中枢遇到的异常
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！提交前请留意：
+        - **请勿粘贴**模型 API Key、中枢配对邀请码、TLS 私钥或个人敏感记录。
+        - 如果发现安全漏洞，请勿公开提交 Issue，请直接联系仓库维护者。
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 发生位置
+      options:
+        - Android 手机端
+        - 家庭中枢（Docker / 原生服务）
+        - 网页管理台
+        - 手机与中枢同步 / 连接
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 设备与版本信息
+      description: 手机型号 + Android 版本 + 小满版本号/构建号（或中枢系统与 Docker 版本）
+      placeholder: 例如：一加 13 / Android 15 (ColorOS 15) / 小满 0.13.13
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请尽量写清你是如何一步步触发这个问题的
+      placeholder: |
+        1. 打开「...」页面
+        2. 点击「...」
+        3. 出现异常现象
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为与实际现象
+      placeholder: 原本期望发生什么，实际发生了什么？如有截图（请打码隐私信息）可以直接拖进来。
+    validations:
+      required: true
