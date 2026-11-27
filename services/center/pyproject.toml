@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mellow-center"
-version = "0.14.0"
+version = "0.14.1"
 description = "Mellow encrypted single-center developer preview"
 requires-python = ">=3.11"
 dependencies = ["zeroconf>=0.132,<1", "fastapi>=0.109,<1", "pydantic>=2.5,<3", "uvicorn>=0.27,<1", "httpx>=0.28,<1", "cryptography>=42,<47", "onnxruntime==1.24.4", "tokenizers==0.22.2", "numpy==2.4.6",

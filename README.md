@@ -4,7 +4,7 @@
   <p><strong>自托管的中文个人助理与生活陪伴，住在你的 Android 手机里。</strong></p>
   <p>记日程、收资料、理生活、回看人生，也会在合适的时候主动想到你。<br>没有官方云端，一部手机就能离线用；家里有常开电脑时，可选配自托管家庭中枢。</p>
   <p>
-    <a href="https://github.com/Annuts/Mellow-Public/releases">下载 APK</a> ·
+    <a href="https://github.com/Annuts/Mellow-Public/releases">下载手机、手表和插件</a> ·
     <a href="#快速开始">快速开始</a> ·
     <a href="docs/使用指南.md">使用指南</a> ·
     <a href="docs/部署中枢.md">部署家庭中枢</a> ·
@@ -17,7 +17,15 @@
 
 ---
 
-## 0.14.0 更新
+## 0.14 系列更新
+
+### 0.14.1
+
+- 手机版和 OPPO Watch X2 手表版使用同一构建号，可分别下载 APK。
+- Codex、OpenCode、DeepSeek Harness 各有独立 ZIP。选择你使用的工具，解压后按包内 `README.md` 安装。需要自托管的小满中枢和独立的连接器令牌。
+- 五个文件及校验值见 [发布页](https://github.com/Annuts/Mellow-Public/releases/tag/v0.14.1)。
+
+### 0.14.0
 
 - 「库存与食材」「菜谱」「今晚吃什么」各有自己的页面。
 - 食材照片、购物小票或订单截图可在库存页或聊天中识别，勾选并核对后批量入库。
