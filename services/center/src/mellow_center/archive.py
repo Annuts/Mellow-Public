@@ -13,7 +13,7 @@ ORIGINAL_KINDS = {'message', 'journal', 'memory', 'document', 'event', 'project'
                   'goal', 'vision', 'review', 'context'}
 
 
-def validate_photo_preview(photo):
+def validate_photo_preview(photo, *, max_dimension=640):
     import base64, binascii
     require(isinstance(photo, str) and 0 < len(photo) <= 2796204)
     try:
@@ -22,7 +22,7 @@ def validate_photo_preview(photo):
         require(False)
     require(image.startswith(b'\x89PNG\r\n\x1a\n') and len(image) <= 2 * 1024 * 1024)
     require(len(image) >= 33 and image[12:16] == b'IHDR')
-    require(all(0 < int.from_bytes(image[i:i + 4], 'big') <= 640 for i in (16, 20)))
+    require(all(0 < int.from_bytes(image[i:i + 4], 'big') <= max_dimension for i in (16, 20)))
 
 
 def instant(value) -> datetime:

@@ -16,6 +16,7 @@ services:
       - "${MELLOW_DOWNLOADS:-./downloads}:/var/lib/mellow-downloads:ro"
     environment:
       MELLOW_DOWNLOADS_PUBLIC_LAN: "${MELLOW_DOWNLOADS_PUBLIC_LAN:-1}"
+      MELLOW_CONNECTOR_ACTIVITY_ENABLED: "${MELLOW_CONNECTOR_ACTIVITY_ENABLED:-0}"
       FLYAI_API_KEY: "${FLYAI_API_KEY:-}"
       FORWARDED_ALLOW_IPS: ""
     secrets:

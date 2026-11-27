@@ -2,6 +2,7 @@
 import re
 import copy
 import hashlib
+import os
 from typing import Any
 from datetime import datetime, timedelta, timezone
 
@@ -145,6 +146,8 @@ def router(vault):
         value = sync_body(request, 8192)
         with vault.transaction() as state:
             c = connector_identity(state, request, 'import')
+            if os.environ.get('MELLOW_CONNECTOR_ACTIVITY_ENABLED') != '1':
+                return {'status': 'disabled'}
             return record_activity(state,c,value)
 
     @api.post('/usage')

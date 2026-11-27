@@ -180,7 +180,7 @@ def router(vault):
             degraded = getattr(request.app.state, 'worker_error', None) or any(step['consecutive_failures'] for step in worker.values())
             return {"protocol": "preview-1", "status": "degraded" if degraded else "ready",
                     "center_id": state["center_id"], 'worker': worker,
-                    'features': ['occurred_at', 'jobs_delta', 'light_sync', 'event_departure', 'task_place', 'letter_photo', 'pantry_expires_on', 'inventory_batches', 'thought_candidates_v1'], **semantic_health(state), **tls_status(vault.path.parent)}
+                    'features': ['occurred_at', 'jobs_delta', 'light_sync', 'event_departure', 'task_place', 'letter_photo', 'pantry_expires_on', 'inventory_batches', 'thought_candidates_v1', 'photo_analysis_1440'], **semantic_health(state), **tls_status(vault.path.parent)}
 
     @api.post('/devices/heartbeat')
     def heartbeat(request: Request):
@@ -745,7 +745,7 @@ def router(vault):
         if photo:
             from .archive import validate_photo_preview
             require(value['space'] == 'personal', 'MODEL_SCOPE_DENIED', 403)
-            validate_photo_preview(value['image'])
+            validate_photo_preview(value['image'], max_dimension=1440)
             content = [{'type': 'text', 'text': content}, {'type': 'image_url',
                         'image_url': {'url': 'data:image/png;base64,' + value['image']}}]
         actor, device, config, key = await run_in_threadpool(reserve_model, request, value['space'])

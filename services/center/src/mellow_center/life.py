@@ -243,6 +243,20 @@ def stock_confirmed(data, day_value, *, state=None):
             not (data.get('check_on') and data['check_on'] <= day_value))
 
 
+def usable_stock(records, day_value, state):
+    lots = [(r, lot) for r in records
+            if r['kind'] == 'pantry' and stock_confirmed(r['data'], day_value, state=state)
+            for lot in r['data'].get('batches', [r['data']])
+            if not lot.get('expires_on') or lot['expires_on'] >= day_value]
+    lots.sort(key=lambda pair: (pair[1].get('expires_on') or '9999',
+                               pair[1].get('purchased_on') or '9999',
+                               pair[0]['id'], pair[1].get('id', '')))
+    indexed = {}
+    for record, lot in lots:
+        indexed.setdefault((normalize(record['data']['text']), UNITS[lot['unit']][0]), []).append((record, lot))
+    return indexed
+
+
 def kitchen_preview(state, device, meal_id) -> dict[str, Any]:
     meal = get(state, device, meal_id, 'meal'); data = meal['data']
     require(data['status'] == 'planned', 'MEAL_NOT_PLANNED', 409)
@@ -252,25 +266,34 @@ def kitchen_preview(state, device, meal_id) -> dict[str, Any]:
     prefs = profile(state, meal['space'])
     require(recipe_allowed(recipe, prefs), 'RECIPE_CONSTRAINTS_UNCONFIRMED', 409)
     today = datetime.now(owner_timezone(state)).date().isoformat()
-    batches = [r for r in state['records'].values() if r['kind'] == 'pantry' and r['space'] == meal['space']]
-    lots = [(r, b) for r in batches for b in r['data'].get('batches', [r['data']])]
-    lots.sort(key=lambda pair: (pair[1].get('expires_on') or '9999', pair[1].get('purchased_on') or '9999',
-                               pair[0]['id'], pair[1].get('id', '')))
-    available = {(r['id'], b.get('id')): number(b['quantity']) for r, b in lots}
-    allocations, missing = {}, []
-    factor = number(data['servings']) / number(recipe['data']['servings'])
+    lots = usable_stock((r for r in state['records'].values() if r['space'] == meal['space']),
+                        today, state)
+    allocations, missing, _ = allocate_ingredients(recipe, data['servings'], lots)
+    plan = {'meal_id': meal_id, 'meal_revision': meal['revision'], 'recipe_revision': recipe['revision'],
+            'profile_revisions': sorted((r['id'], r['revision']) for r in state['records'].values() if r['kind'] == 'food_profile' and r['space'] == meal['space']),
+            'allocations': allocations, 'missing': missing, 'date': today}
+    return {**plan, 'confirmation_hash': hashlib.sha256(canonical(plan)).hexdigest()}
+
+
+def allocate_ingredients(recipe, servings, lots):
+    available = {}
+    allocations, missing, expiries = {}, [], set()
+    factor = number(servings) / number(recipe['data']['servings'])
     for ingredient in recipe['data']['ingredients']:
         required = number(ingredient['quantity']) * factor
         dimension, unit_factor = UNITS[ingredient['unit']]
-        for batch, lot in lots:
-            b = batch['data']; batch_dimension, batch_factor = UNITS[lot['unit']]
-            if (normalize(b['text']) != normalize(ingredient['name']) or batch_dimension != dimension or
-                 not stock_confirmed(b, today, state=state) or (lot.get('expires_on') and lot['expires_on'] < today)):
-                continue
+        for batch, lot in lots.get((normalize(ingredient['name']), dimension), ()):
+            b = batch['data']
+            _, batch_factor = UNITS[lot['unit']]
             key = (batch['id'], lot.get('id'))
-            take = min(available[key], required * Decimal(unit_factor) / Decimal(batch_factor))
+            remaining = available.get(key)
+            if remaining is None:
+                remaining = number(lot['quantity'])
+            take = min(remaining, required * Decimal(unit_factor) / Decimal(batch_factor))
             if take <= 0: continue
-            available[key] -= take
+            if lot.get('expires_on'):
+                expiries.add(lot['expires_on'])
+            available[key] = remaining - take
             required -= take * Decimal(batch_factor) / Decimal(unit_factor)
             entry = allocations.setdefault(batch['id'], {'id': batch['id'], 'revision': batch['revision'],
                 'text': b['text'], 'unit': b['unit'], 'quantity': Decimal(0)})
@@ -281,10 +304,7 @@ def kitchen_preview(state, device, meal_id) -> dict[str, Any]:
             if required <= 0: break
         if required > 0:
             missing.append({'name': ingredient['name'], 'quantity': float(required), 'unit': ingredient['unit']})
-    plan = {'meal_id': meal_id, 'meal_revision': meal['revision'], 'recipe_revision': recipe['revision'],
-            'profile_revisions': sorted((r['id'], r['revision']) for r in state['records'].values() if r['kind'] == 'food_profile' and r['space'] == meal['space']),
-            'allocations': [{**a, 'quantity': float(a['quantity'])} for a in allocations.values()], 'missing': missing, 'date': today}
-    return {**plan, 'confirmation_hash': hashlib.sha256(canonical(plan)).hexdigest()}
+    return [{**a, 'quantity': float(a['quantity'])} for a in allocations.values()], missing, min(expiries, default=None)
 
 
 def put_internal(state, record):
@@ -369,12 +389,23 @@ def life_dashboard(state, device, space, day_value):
     records = [copy.deepcopy(r) for r in state['records'].values() if r['space'] == space]
     prefs = profile(state, space)
     recipes = [r for r in records if r['kind'] == 'recipe' and recipe_allowed(r, prefs)]
-    recipes.sort(key=lambda r: (r['data'].get('feedback') != 'liked', r['data'].get('feedback') == 'too_slow', r['data']['minutes']))
+    lots = usable_stock(records, day_value, state) if recipes else {}
+    soon = (date.fromisoformat(day_value) + timedelta(days=3)).isoformat()
+    stock = {}
+    for recipe in recipes:
+        _, missing, expiry = allocate_ingredients(recipe, recipe['data']['servings'], lots)
+        stock[recipe['id']] = {'missing_count': len(missing),
+                               'soonest_expiry': expiry if expiry and expiry <= soon else None}
+    recipes.sort(key=lambda r: (stock[r['id']]['missing_count'],
+                                stock[r['id']]['soonest_expiry'] or '9999',
+                                r['data'].get('feedback') != 'liked',
+                                r['data'].get('feedback') == 'too_slow', r['data']['minutes']))
     logs = [r for r in records if r['kind'] == 'habit_log' and r['data']['date'] == day_value and r['data']['done']]
     day_start = datetime.fromisoformat(day_value).replace(tzinfo=owner_timezone(state))
     day_end = day_start + timedelta(days=1)
     return {'date': day_value, 'features': ['pantry_expires_on', 'inventory_batches'],
             'recipes': recipes[:10], 'constraints_confirmed': prefs['confirmed'],
+            'recipe_stock': {r['id']: stock[r['id']] for r in recipes[:10]},
             'stock_to_check': [r for r in records if r['kind'] == 'pantry' and
                               not stock_confirmed(r['data'], day_value, state=state)],
             'habit_done_ids': [r['data']['habit_id'] for r in logs],
